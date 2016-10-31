@@ -2,12 +2,10 @@
  * The Event.js controller will contain methods for creating new Events and also retrieving those values for listing purposes.
  * Created by		: Sherman Chen
  * Date Created		: 2016-09-07 7:28pm
- * Date Modified	: 2016-10-06 05:39pm
+ * Date Modified	: 2016-10-28 02:46pm
  * ===============================================================================================================
  * Update Log:
- * (1) Remove the API method /get_event_speakers
- * (2) Modified the API method /assign_speakers
- * (3) Added the API method /remove_event_speaker
+ * (1) Added API method /get_events_report
  */
 
 'use strict';
@@ -38,6 +36,69 @@ router.get('/get_all_events', function (request, response) {
 	Event.find({}).populate('_eventType _eventCategory _eventStatus _eventVenue _speakers').exec(function (error, events) {
 		return response.json(events).status(200).end();
 	});
+});
+
+/**
+ * /get_events_report/?filter=[filterType] - this API method will return report data depending on the filterType.
+ * Http Method		: GET
+ * Created By		: Sherman Chen
+ * Date Created		: 2016-10-28 11:02am
+ */
+router.get('/get_events_report', function (request, response) {
+	var filterType = request.query.filter;
+
+	Event.find({}, function(getCountError, eventCount) {
+		if (filterType == 'category') {
+			Event.aggregate([
+				{
+					$group: {
+						_id: '$_eventCategory',  //$region is the column name in collection,
+						count: {$sum: 1}
+					}
+				}
+			], function (error, events) {
+				if (error) {
+					console.log(error.toString());
+				}
+
+				events.forEach(function(event, index) {
+					event.percentage = ( event.count / eventCount.length ) * 100.0;
+
+					console.log('Percentage: ' + event.percentage);
+				});
+
+				EventCategory.populate(events, { "path": "_id" }, function(err,results) {
+					return response.json(results).status(200).end();
+				});
+			});
+		}
+		else if (filterType == 'type') {
+			Event.aggregate([
+				{
+					$group: {
+						_id: '$_eventType',  //$region is the column name in collection,
+						count: {$sum: 1}
+					}
+				}
+			], function (error, events) {
+				if (error) {
+					console.log(error.toString());
+				}
+
+				events.forEach(function(event, index) {
+					event.percentage = ( event.count / eventCount.length ) * 100.0;
+
+					console.log('Percentage: ' + event.percentage);
+				});
+
+				EventType.populate(events, { "path": "_id" }, function(err,results) {
+					return response.json(results).status(200).end();
+				});
+			});
+		}
+	});
+
+
 });
 
 /**
